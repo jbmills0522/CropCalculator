@@ -1,0 +1,146 @@
+﻿@page "/RouteInformationAdmin"
+@using TomatoCalculator.Shared.Models
+
+@inject RouteInformationService RouteInformationService
+
+<h3>Route Information Admin</h3>
+<DataGrid TItem="RouteInformation"
+          Data="@routeList"
+          Sortable="true"
+          Filterable="true"
+          Editable="true"
+          EditMode="DataGridEditMode.Inline"
+          RowInserted="@AddNewRoute"
+          RowUpdated="@UpdateRoute"
+          RowRemoved="@DeleteRoute">
+    <DataGridColumns>
+        <DataGridColumn TItem="RouteInformation"
+                        Field="@nameof(RouteInformation.DepartureLocation)"
+                        Caption="Departure"
+                        Filterable="true"
+                        Sortable="true"
+                        Editable="true">
+            <DisplayTemplate>
+                @{
+                    var departure = (context as RouteInformation)?.DepartureLocation;
+                    @departure.GetDisplayName();
+                }
+            </DisplayTemplate>
+            <EditTemplate>
+                <Select TValue="TomatoCalculatorEnums.Locations" SelectedValue="@((TomatoCalculatorEnums.Locations)(((CellEditContext)context).CellValue))" SelectedValueChanged="@((v) => ((CellEditContext)context).CellValue = v)">
+                    @foreach (TomatoCalculatorEnums.Locations loc in Enum.GetValues(typeof(TomatoCalculatorEnums.Locations)))
+                    {
+                        <SelectItem Value="@loc">@loc.GetDisplayName()</SelectItem>
+                    }
+                </Select>
+            </EditTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="RouteInformation"
+                        Field="@nameof(RouteInformation.ArrivalLocation)"
+                        Caption="Arrival"
+                        Filterable="true"
+                        Sortable="true"
+                        Editable="true">
+            <DisplayTemplate>
+                @{
+                    var arrival = (context as RouteInformation)?.ArrivalLocation;
+                    @arrival.GetDisplayName();
+                }
+            </DisplayTemplate>
+            <EditTemplate>
+                <Select TValue="TomatoCalculatorEnums.Locations" SelectedValue="@((TomatoCalculatorEnums.Locations)(((CellEditContext)context).CellValue))" SelectedValueChanged="@((v) => ((CellEditContext)context).CellValue = v)">
+                    @foreach (TomatoCalculatorEnums.Locations loc in Enum.GetValues(typeof(TomatoCalculatorEnums.Locations)))
+                    {
+                        <SelectItem Value="@loc">@loc.GetDisplayName()</SelectItem>
+                    }
+                </Select>
+            </EditTemplate>
+        </DataGridColumn>
+        <DataGridNumericColumn TItem="RouteInformation"
+                               Field="@nameof(RouteInformation.ApproximateMileage)"
+                               Caption="Approximate Mileage"
+                               Filterable="false"
+                               Sortable="true"
+                               Editable="true">
+            <DisplayTemplate>
+                @($"{(context as RouteInformation)?.ApproximateMileage} miles")
+            </DisplayTemplate>
+        </DataGridNumericColumn>
+        <DataGridCommandColumn TItem="RouteInformation">
+            <EditCommandTemplate>
+                <Button Color="Color.Dark" Clicked="context.Clicked" Style="margin: 0 5px 0 5px">Edit</Button>
+            </EditCommandTemplate>
+            <ClearFilterCommandTemplate>
+                <Button Color="Color.Warning" Clicked="context.Clicked" Style="margin: 0 5px 0 5px">Clear</Button>
+            </ClearFilterCommandTemplate>
+            <DeleteCommandTemplate>
+                <Button Color="Color.Danger" Clicked="context.Clicked" Style="margin: 0 5px 0 5px">Delete</Button>
+            </DeleteCommandTemplate>
+            <NewCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px">New</Button>
+            </NewCommandTemplate>
+            <CancelCommandTemplate>
+                <Button Color="Color.Danger" Clicked="context.Clicked" Style="margin: 0 5px 0 5px">Cancel</Button>
+            </CancelCommandTemplate>
+            <SaveCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px">Save</Button>
+            </SaveCommandTemplate>
+        </DataGridCommandColumn>
+    </DataGridColumns>
+    <EmptyTemplate>
+            <p>Loading.....</p>
+    </EmptyTemplate>
+    <LoadingTemplate>
+        <p>Loading.....</p>
+    </LoadingTemplate>
+</DataGrid>
+@code {
+    public List<RouteInformation> routeList { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        routeList = await RouteInformationService.GetAll();
+    }
+    
+
+    private async void AddNewRoute(SavedRowItem<RouteInformation, Dictionary<String, object>> route)
+    {
+        var newRoute = route.Item;
+        try
+        {
+            await RouteInformationService.SaveRoute(newRoute);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error Thrown: {ex.Message}");
+        }
+    }
+
+    private async void UpdateRoute(SavedRowItem<RouteInformation, Dictionary<String, object>> route)
+    {
+        RouteInformation newRoute = new();
+        newRoute = route.Item;
+        try
+        {
+            await RouteInformationService.UpdateRoute(newRoute);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error thrown: {ex.Message}");
+        }
+    }
+
+    private async void DeleteRoute(RouteInformation route)
+    {
+        try
+        {
+            await RouteInformationService.RemoveRoute(route);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception(ex.Message);
+        }
+
+    }
+
+}

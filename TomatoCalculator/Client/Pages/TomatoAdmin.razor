@@ -1,0 +1,112 @@
+﻿@page "/TomatoAdmin"
+@using TomatoCalculator.Shared.Models
+
+@inject TomatoService TomatoService
+<h3>TomatoAdmin</h3>
+<DataGrid TItem="Tomato"
+          Data="@tomatoList"
+          Hoverable="true"
+          Editable="true"
+          EditMode="DataGridEditMode.Inline"
+          Sortable="true"
+          Filterable="true"
+          PageSize="10"
+          ShowPager="true"
+          RowInserted="@AddTomato"
+          RowRemoved="@DeleteTomato"
+          RowUpdated="@UpdateTomato">
+    <DataGridColumns>
+        <DataGridColumn TItem="Tomato"
+                        Field="@nameof(Tomato.Type)"
+                        Caption="Type"
+                        Sortable="true"
+                        Filterable="true"
+                        Editable="true">
+            <DisplayTemplate>
+                @($"{(context as Tomato)?.Type.GetDisplayName()}")
+            </DisplayTemplate>    
+            <EditTemplate>
+                <Select TValue="TomatoCalculatorEnums.TomatoType" SelectedValue="@((TomatoCalculatorEnums.TomatoType) (((CellEditContext) context).CellValue))" SelectedValueChanged="@((val) => ((CellEditContext)context).CellValue = val)">
+                    @foreach (TomatoCalculatorEnums.TomatoType tt in Enum.GetValues(typeof(TomatoCalculatorEnums.TomatoType)))
+                    {
+                        <SelectItem Value="@tt">@tt.GetDisplayName()</SelectItem>
+                    }
+                </Select>
+            </EditTemplate>
+        </DataGridColumn>
+        <DataGridNumericColumn TItem="Tomato"
+                               Field="@nameof(Tomato.PricePerPound)"
+                               Caption="Price Per Pound"
+                               Sortable="true"
+                               Editable="true"
+                               Filterable="false">
+            <DisplayTemplate>
+                @($"${(context as Tomato)?.PricePerPound}")
+            </DisplayTemplate>
+        </DataGridNumericColumn>
+        <DataGridNumericColumn TItem="Tomato"
+                               Field="@nameof(Tomato.ExpectedWastePerPound)"
+                               Caption="Expected Waste per Mile"
+                               Sortable="true"
+                               Editable="true"
+                               Filterable="false">
+            <DisplayTemplate>
+                @($"{(context as Tomato)?.ExpectedWastePerPound} .lbs")
+            </DisplayTemplate>
+        </DataGridNumericColumn>
+        <DataGridCommandColumn TItem="Tomato">
+            <EditCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Edit</Button>
+            </EditCommandTemplate>
+            <SaveCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Save</Button>
+            </SaveCommandTemplate>
+            <ClearFilterCommandTemplate>
+                <Button Color="Color.Warning" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Clear</Button>
+            </ClearFilterCommandTemplate>
+            <CancelCommandTemplate>
+                <Button Color="Color.Danger" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Cancel</Button>
+            </CancelCommandTemplate>
+            <NewCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">New</Button>
+            </NewCommandTemplate>
+            <DeleteCommandTemplate>
+                <Button Color="Color.Danger" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Delete</Button>
+            </DeleteCommandTemplate>
+        </DataGridCommandColumn>
+    </DataGridColumns>
+    <EmptyTemplate>
+        <p>No Records found</p>
+    </EmptyTemplate>
+    <LoadingTemplate>
+        <p>Loading.......</p>
+    </LoadingTemplate>
+</DataGrid>
+
+@code {
+    public List<Tomato> tomatoList { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        tomatoList = await TomatoService.GetAll();
+    }
+
+    private async Task AddTomato(SavedRowItem<Tomato, Dictionary<String, object>> tomato)
+    {
+        var t = tomato.Item;
+        await TomatoService.Update(t);
+    }
+
+    private async Task DeleteTomato(Tomato tomato)
+    {
+
+        await TomatoService.Remove(tomato);
+    }
+
+    private async Task UpdateTomato(SavedRowItem<Tomato, Dictionary<String, object>> tomato)
+    {
+        var t = tomato.Item;
+        await TomatoService.Update(t);
+    }
+
+}

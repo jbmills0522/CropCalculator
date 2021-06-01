@@ -1,0 +1,88 @@
+﻿@page "/DriverManager"
+@using TomatoCalculator.Shared.Models
+
+@inject DriverInformationService DriverService
+<h3>Driver Manager</h3>
+
+<DataGrid TItem="DriverInformation"
+          Data="@driverList"
+          Editable="true"
+          EditMode="DataGridEditMode.Inline"
+          Sortable="true"
+          Filterable="true"
+          RowInserted="@UpdateDriver"
+          RowRemoved="@RemoveDriver"
+          RowUpdated="@UpdateDriver">
+    <DataGridColumns>
+        <DataGridNumericColumn TItem="DriverInformation"
+                               Field="@nameof(DriverInformation.DriverNumber)"
+                               Caption="Driver Id"
+                               Sortable="true"
+                               Filterable="true"
+                               Editable="true">
+            
+        </DataGridNumericColumn>
+        <DataGridColumn TItem="DriverInformation"
+                        Field="@nameof(DriverInformation.FirstName)"
+                        Caption="Driver First Name"
+                        Sortable="true"
+                        Filterable="true"
+                        Editable="true">
+            
+        </DataGridColumn>
+        <DataGridColumn TItem="DriverInformation"
+                        Field="@nameof(DriverInformation.LastName)"
+                        Caption="Driver Last Name"
+                        Sortable="true"
+                        Filterable="true"
+                        Editable="true">
+        </DataGridColumn>
+        <DataGridCommandColumn TItem="DriverInformation">
+            <EditCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Edit</Button>
+            </EditCommandTemplate>
+            <NewCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">New</Button>
+            </NewCommandTemplate>
+            <SaveCommandTemplate>
+                <Button Color="Color.Primary" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Save</Button>
+            </SaveCommandTemplate>
+            <ClearFilterCommandTemplate>
+                <Button Color="Color.Warning" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Clear</Button>
+            </ClearFilterCommandTemplate>
+            <CancelCommandTemplate>
+                <Button Color="Color.Danger" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Cancel</Button>
+            </CancelCommandTemplate>
+            <DeleteCommandTemplate>
+                <Button Color="Color.Danger" Clicked="context.Clicked" Style="margin: 0 5px 0 5px;">Delete</Button>
+            </DeleteCommandTemplate>
+        </DataGridCommandColumn>
+    </DataGridColumns>
+    <EmptyTemplate>
+        <p>No Records Found</p>
+    </EmptyTemplate>
+    <LoadingTemplate>
+        <p>Loading.....</p>
+    </LoadingTemplate>
+</DataGrid>
+
+@code {
+    public List<DriverInformation> driverList { get; set; }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        driverList = await DriverService.GetAll();
+    }
+
+    private async Task UpdateDriver(SavedRowItem<DriverInformation, Dictionary<string, object>> o)
+    {
+        var driver = o.Item;
+        await DriverService.UpdateDriver(driver);
+    }
+
+    private async Task RemoveDriver(DriverInformation driver)
+    {
+        await DriverService.RemoveDriver(driver);
+    }
+
+}

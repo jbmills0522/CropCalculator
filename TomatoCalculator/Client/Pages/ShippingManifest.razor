@@ -1,0 +1,125 @@
+﻿@page "/ShippingManifest"
+@using TomatoCalculator.Shared.Models
+
+@inject ShippingService ShippingService
+<Row>
+    <h3>Shipping Manifest</h3>
+    <Column ColumnSize="ColumnSize.Is3.Is7.WithOffset">
+        <div style="background-color: #99ccff; height: 30px; width: 130px; border: 2px solid black; border-radius: 4px; margin: 0px 5px 0px 2px;">
+        </div>
+        <p>Indicates Shipping Complete</p>
+    </Column>
+</Row>
+
+<DataGrid TItem="Shipping"
+          Data="@shippingList"
+          Sortable="true"
+          Filterable="true"
+          PageSize="10"
+          ShowPager="true"
+          RowStyling="@OnRowStyling">
+    <DataGridColumns>
+        <DataGridColumn TItem="Shipping"
+                        Field="@nameof(Shipping.DepartureLocation)"
+                        Caption="Departure Location"
+                        Filterable="true"
+                        Sortable="true">
+            <DisplayTemplate>
+                @($"{(context as Shipping)?.DepartureLocation.GetDisplayName()}")
+            </DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="Shipping"
+                        Field="@nameof(Shipping.ArrivalLocation)"
+                        Caption="Arrival"
+                        Filterable="true"
+                        Sortable="true">
+            <DisplayTemplate>
+                @($"{(context as Shipping)?.ArrivalLocation.GetDisplayName()}")
+            </DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="Shipping"
+                        Field="@nameof(Shipping.DriverLastName)"
+                        Caption="Driver"
+                        Filterable="true"
+                        Sortable="true">
+            <DisplayTemplate>
+                @{
+                    var driverName = (context as Shipping)?.DriverFirstName;
+                    var lastName = (context as Shipping)?.DriverLastName;
+                    
+                    @($"{lastName}, {driverName}")
+                }
+            </DisplayTemplate>
+        </DataGridColumn>
+        <DataGridColumn TItem="Shipping"
+                        Field="@nameof(Shipping.DepartureDate)"
+                        Caption="Departure Date"
+                        Filterable="false"
+                        Sortable="true">
+        </DataGridColumn>
+        <DataGridNumericColumn TItem="Shipping"
+                        Field="@nameof(Shipping.DepartureWeight)"
+                        Caption="Departure Weight in Tons"
+                        Filterable="false"
+                        Sortable="true">
+            
+        </DataGridNumericColumn>
+        <DataGridColumn TItem="Shipping"
+                        Field="@nameof(Shipping.UnloadDate)"
+                        Caption="Arrival Date"
+                        Filterable="false"
+                        Sortable="true">
+            
+        </DataGridColumn>
+        <DataGridNumericColumn TItem="Shipping"
+                               Field="@nameof(Shipping.UnloadWeight)"
+                               Caption="Unload Weight"
+                               Filterable="false"
+                               Sortable="true">
+        </DataGridNumericColumn>
+        <DataGridNumericColumn TItem="Shipping"
+                               Field="@nameof(Shipping.ExpectedLossTrip)"
+                               Caption="Expected Loss"
+                               Filterable="false"
+                               Sortable="true">
+        </DataGridNumericColumn>
+        <DataGridNumericColumn TItem="Shipping"
+                               Field="@nameof(Shipping.ActualLossTrip)"
+                               Caption="Actual Loss"
+                               Filterable="false"
+                               Sortable="true">
+        </DataGridNumericColumn>
+        <DataGridNumericColumn TItem="Shipping"
+                               Field="@nameof(Shipping.ExpectedLoadValue)"
+                               Caption="Expected load value"
+                               Filterable="false"
+                               Sortable="true">
+            
+        </DataGridNumericColumn>
+        <DataGridNumericColumn TItem="Shipping"
+                               Field="@nameof(Shipping.AdjustedLoadValue)"
+                               Caption="Actual Load Value"
+                               Filterable="false"
+                               Sortable="true">
+            
+        </DataGridNumericColumn>
+    </DataGridColumns>
+</DataGrid>
+
+@code {
+    public List<Shipping> shippingList { get; set; }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        shippingList = await ShippingService.GetAll();
+    }
+
+    private void OnRowStyling(Shipping shipping, DataGridRowStyling styling)
+    {
+        if (shipping.DepartureWeight != 0 && shipping.UnloadWeight != 0)
+        {
+            styling.Style = "background-color: #99ccff;";
+        }
+    }
+
+}

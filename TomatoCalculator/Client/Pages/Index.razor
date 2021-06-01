@@ -1,0 +1,338 @@
+﻿@page "/"
+@using TomatoCalculator.Shared.Models
+@using System.Diagnostics
+@using System.Net.Http.Headers
+
+@inject ShippingService _shippingService
+@inject DriverInformationService _driverInformationService
+@inject TomatoService _tomatoService
+@inject RouteInformationService _routeInformationService
+@inject TomatoCalculatorService _tomatoCalculatorService
+
+<h1>Scale</h1>
+@if (loadShipping == null)
+{
+    <p>Loading....</p>
+}
+else
+{
+    <Row>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Select TValue="Guid" SelectedValue="@loadDriver.Id" SelectedValueChanged="@(v => LoadDriverChanged(v))">
+                <SelectItem Value="Guid.Empty" Disabled="true">Select Driver</SelectItem>
+                @foreach (DriverInformation driver in driverList)
+                {
+                    <SelectItem Value="@driver.Id">@driver.LastName, @driver.FirstName</SelectItem>
+                }
+            </Select>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Select TValue="TomatoCalculatorEnums.LoadingUnloading"
+                    SelectedValue="@loadingType"
+                    SelectedValueChanged="@(v => loadingTypeChanged(v))">
+                @foreach (TomatoCalculatorEnums.LoadingUnloading loading in Enum.GetValues<TomatoCalculatorEnums.LoadingUnloading>())
+                {
+                    <SelectItem Value="@loading">@loading.GetDisplayName()</SelectItem>
+                }
+            </Select>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Select TValue="Guid"
+                    Disabled="@(loadingType != TomatoCalculatorEnums.LoadingUnloading.Unloading)"
+                    SelectedValue="@loadShipping.Id" 
+                    SelectedValueChanged="@(v => GetShippingInformation(v))">
+                <SelectItem Value="Guid.Empty" Disabled="true">Select Load Information</SelectItem>
+                @foreach (Shipping ship in shippingList)
+                {
+                    <SelectItem Value="@ship.Id">@ship.DriverNumber</SelectItem>
+                }
+            </Select>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is2">
+            <Button Color="Color.Primary" Clicked="@CalculateLoad">Weigh Load</Button>
+        </Column>
+    </Row>
+    
+    <Divider DividerType="DividerType.TextContent" Text="J.G. Boswell" />
+    
+    <Row>
+        <Column ColumnSize="ColumnSize.Is4">
+            <Field>
+                <FieldLabel>Driver Number</FieldLabel>
+                <NumericEdit Disabled="true"
+                             Tvalue="int"
+                             Value="@loadShipping.DriverNumber" />
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is4">
+            <Field>
+                <FieldLabel>Driver First Name</FieldLabel>
+                <TextEdit Disabled="true" Text="@loadShipping.DriverFirstName" />
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is4">
+            <Field>
+                <FieldLabel>Driver Last Name</FieldLabel>
+                <TextEdit Disabled="true" Text="@loadShipping.DriverLastName" />
+            </Field>
+        </Column>
+    </Row>
+    <Row>
+        <Column ColumnSize="ColumnSize.Is6">
+            <Field>
+                <FieldLabel>Choose Route</FieldLabel>
+                <Select Disabled="@(loadingType == TomatoCalculatorEnums.LoadingUnloading.Unloading)"
+                        TValue="Guid"
+                        SelectedValue="@loadRoute.Id"
+                        SelectedValueChanged="@(v => ShippingRouteChanged(v))">
+                    <SelectItem Value="Guid.Empty">Select Route</SelectItem>
+                    @foreach (RouteInformation route in routeList)
+                    {
+                        <SelectItem Value="@route.Id">@route.DepartureLocation.GetDisplayName() to @route.ArrivalLocation.GetDisplayName()</SelectItem>
+                    }
+                </Select>
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is2">
+            <Field>
+                <FieldLabel>Approx. Mileage</FieldLabel>
+                <NumericEdit Disabled="true" 
+                             TValue="float"
+                             Value="@loadShipping.ApproximateMileage" />
+            </Field>
+        </Column>
+    </Row>
+    <Row>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Departure Date</FieldLabel>
+                <DateEdit 
+                    Disabled="@(loadingType == TomatoCalculatorEnums.LoadingUnloading.Unloading)"
+                    TValue="DateTime"
+                    Date="@loadShipping.DepartureDate" />
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Departure Weight</FieldLabel>
+                <NumericEdit Disabled="true" 
+                             TValue="float"
+                             Value="@(loadShipping.DepartureWeight = loadShipping.DepartureWeight == 0 ? payLoad : loadShipping.DepartureWeight)"/>
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Unload Date</FieldLabel>
+                <DateEdit Disabled="@(loadShipping.DepartureDate == DateTime.Now)"
+                          TValue="DateTime"
+                          Date="@loadShipping.UnloadDate"/>
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Unload Weight</FieldLabel>
+                <NumericEdit Disabled="true"
+                             TValue="float"
+                             Value="@loadShipping.UnloadWeight" />
+            </Field>
+        </Column>
+    </Row>
+    <Row>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Crop</FieldLabel>
+                <Select Disabled="@(loadingType == TomatoCalculatorEnums.LoadingUnloading.Unloading)"
+                        TValue="TomatoCalculatorEnums.TomatoType"
+                        SelectedValue="@loadCrop.Type"
+                        SelectedValueChanged="@(c => TomatoCropChanged(c))">
+                    @foreach (TomatoCalculatorEnums.TomatoType tt in Enum.GetValues<TomatoCalculatorEnums.TomatoType>())
+                    {
+                        <SelectItem Value="@tt">@tt.GetDisplayName()</SelectItem>
+                    }
+                </Select>
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Price Per Pound</FieldLabel>
+                <NumericEdit Disabled="true"
+                             TValue="float"
+                             Value="@loadShipping.PricePerPound" />
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Expected Loss Per Pound</FieldLabel>
+                <NumericEdit Disabled="true"
+                             TValue="float"
+                             Value="@loadShipping.ExpectedLosePerMile"/>
+            </Field>
+        </Column>
+    </Row>
+    <Row>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Calculated Value</FieldLabel>
+                <NumericEdit Disabled="true"
+                             TValue="float"
+                             Value="@loadShipping.ExpectedLoadValue" />
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Calculated Loss</FieldLabel>
+                <NumericEdit Disabled="true"
+                             TValue="float"
+                             Value="@loadShipping.ExpectedLossTrip" />
+            </Field>
+        </Column>
+    </Row>
+    <Row>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Actual Value</FieldLabel>
+                <NumericEdit Disabled="true"
+                             TValue="float"
+                             Value="@loadShipping.AdjustedLoadValue" />
+            </Field>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is3">
+            <Field>
+                <FieldLabel>Actual Loss</FieldLabel>
+                <NumericEdit Disabled="true"
+                             TValue="float"
+                             Value="@loadShipping.ActualLossTrip" />
+            </Field>
+        </Column>
+    </Row>
+    <Row>
+        <Column ColumnSize="ColumnSize.Is2">
+            <Button Color="Color.Primary" Clicked="@SaveShippingInformation">Submit</Button>
+        </Column>
+        <Column ColumnSize="ColumnSize.Is2">
+            <Button Color="Color.Danger" Clicked="@ClearForm">Clear</Button>
+        </Column>
+    </Row>
+}
+
+
+
+@code {
+
+    private float payLoad { get; set; }
+    private DriverInformation loadDriver { get; set; } = new();
+    private Tomato loadCrop { get; set; } = new();
+    private RouteInformation loadRoute { get; set; } = new();
+    private Shipping loadShipping { get; set; } = new();
+    private TomatoCalculatorEnums.LoadingUnloading loadingType { get; set; } = TomatoCalculatorEnums.LoadingUnloading.NotSet;
+    public List<Tomato> tomatoList { get; set; } = new();
+    public List<RouteInformation> routeList { get; set; } = new();
+    public List<DriverInformation> driverList { get; set; } = new();
+    public List<Shipping> shippingList { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        tomatoList = await _tomatoService.GetAll();
+        shippingList = await _shippingService.GetAll();
+        routeList = await _routeInformationService.GetAll();
+        driverList = await _driverInformationService.GetAll();
+        
+        loadShipping = new Shipping();
+    }
+
+
+    private void LoadDriverChanged(Guid id)
+    {
+        loadDriver = driverList.FirstOrDefault(x => x.Id == id);
+
+        if (loadDriver != null)
+        {
+            loadShipping.DriverNumber = loadDriver.DriverNumber;
+            loadShipping.DriverFirstName = loadDriver.FirstName;
+            loadShipping.DriverLastName = loadDriver.LastName;
+        }
+
+        GetShippingByDriver(loadDriver.DriverNumber);
+    }
+
+    private async void loadingTypeChanged(TomatoCalculatorEnums.LoadingUnloading l)
+    {
+        loadingType = l;
+        if (l == TomatoCalculatorEnums.LoadingUnloading.Unloading)
+            shippingList = await GetShippingByDriver(loadDriver.DriverNumber);
+    }
+
+    private async Task<List<Shipping>> GetShippingByDriver(int driverNumber)
+    {
+        return await _shippingService.GetByDriver(driverNumber);
+    }
+
+    private async void GetShippingInformation(Guid id)
+    {
+        loadShipping = await _shippingService.Get(id);
+    }
+
+    private async void CalculateLoad()
+    {
+        payLoad = _tomatoCalculatorService.GenerateLoadWeight();
+        loadShipping.UnloadDate = loadingType == TomatoCalculatorEnums.LoadingUnloading.Unloading ? DateTime.Now : loadShipping.UnloadDate;
+        loadShipping.DepartureWeight = loadShipping.DepartureWeight == 0 ? payLoad : loadShipping.DepartureWeight;
+        loadShipping.UnloadWeight = loadingType == TomatoCalculatorEnums.LoadingUnloading.Unloading ? payLoad : 0;
+        CalculateLossAndValue();
+    }
+
+    private void ShippingRouteChanged(Guid id)
+    {
+        loadRoute = routeList.FirstOrDefault(x => x.Id == id);
+        
+        loadShipping.DepartureLocation = loadRoute.DepartureLocation;
+        loadShipping.ArrivalLocation = loadRoute.ArrivalLocation;
+        loadShipping.ApproximateMileage = loadRoute.ApproximateMileage;
+        
+        CalculateLossAndValue();
+    }
+
+    private void TomatoCropChanged(TomatoCalculatorEnums.TomatoType tt)
+    {
+        loadCrop = tomatoList.FirstOrDefault(x => x.Type == tt);
+
+        loadShipping.TomatoType = loadCrop.Type;
+        loadShipping.PricePerPound = loadCrop.PricePerPound;
+        loadShipping.ExpectedLosePerMile = loadCrop.ExpectedWastePerPound;
+        
+        CalculateLossAndValue();
+    }
+
+    private void CalculateLossAndValue()
+    {
+        loadShipping.ExpectedLoadValue = loadShipping.PricePerPound * ((loadShipping.DepartureWeight * 2000) - loadShipping.ExpectedLossTrip);
+        loadShipping.ExpectedLossTrip = loadShipping.ExpectedLosePerMile * loadShipping.ApproximateMileage;
+        loadShipping.ActualLossTrip = loadingType == TomatoCalculatorEnums.LoadingUnloading.Unloading ? loadShipping.DepartureWeight - loadShipping.UnloadWeight : 0;
+        loadShipping.AdjustedLoadValue = loadingType == TomatoCalculatorEnums.LoadingUnloading.Unloading ? loadShipping.UnloadWeight * (loadShipping.PricePerPound * 2000) : 0;
+    }
+
+    private void ClearForm()
+    {
+        loadDriver = new();
+        loadCrop = new();
+        loadRoute= new();
+        loadShipping = new();
+        loadingType = TomatoCalculatorEnums.LoadingUnloading.NotSet;
+        payLoad = 0;
+    }
+
+    private async Task SaveShippingInformation()
+    {
+        try
+        {
+            await _shippingService.Update(loadShipping);
+            
+            ClearForm();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception(ex.Message);
+        }
+    }
+
+}
